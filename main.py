@@ -65,7 +65,7 @@ def main():
     )
 
     # Plot loss and metrics
-    plot_loss_and_metrics(train_losses, val_losses, metric_values, metric_name="R² Score")
+    plot_loss_and_metrics(train_losses, val_losses, metric_values, metric_name="R² Score", save_path="reports/figures/loss_and_metrics.png")
 
     # Save the model
     torch.save(model.state_dict(), model_save_path)
@@ -74,7 +74,7 @@ def main():
     # Testing
     predictions, ground_truth = test_model(model, test_loader, device)
     print(f"Test Predictions: {predictions.shape}, Ground Truth: {ground_truth.shape}")
-    plot_predictions(predictions, ground_truth)
+    plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], save_path="reports/figures/predictions_vs_ground_truth.png")
 
 
 if __name__ == "__main__":
