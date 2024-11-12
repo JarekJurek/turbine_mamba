@@ -1,11 +1,12 @@
+import os
 from pathlib import Path
 
 import torch
 from torch.nn import MSELoss
 from torch.optim import Adam
-from turbine_mamba.metrics import compute_r2  # Implemented compute_r2 in metrics.py
 
 from turbine_mamba import WindTurbineModel, get_dataloaders, test_model, train_one_epoch, validate_one_epoch
+from turbine_mamba.metrics import compute_r2  # Implemented compute_r2 in metrics.py
 from turbine_mamba.plots import plot_loss_and_metrics, plot_predictions
 
 
@@ -65,16 +66,24 @@ def main():
     )
 
     # Plot loss and metrics
-    plot_loss_and_metrics(train_losses, val_losses, metric_values, metric_name="R² Score", save_path="reports/figures/loss_and_metrics.png")
-
-    # Save the model
-    torch.save(model.state_dict(), model_save_path)
-    print(f"Model saved to {model_save_path}")
+    plot_loss_and_metrics(train_losses, val_losses, metric_values, metric_name="R² Score",
+                          save_path="reports/figures/loss_and_metrics.png")
 
     # Testing
     predictions, ground_truth = test_model(model, test_loader, device)
     print(f"Test Predictions: {predictions.shape}, Ground Truth: {ground_truth.shape}")
-    plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], save_path="reports/figures/predictions_vs_ground_truth.png")
+    plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"],
+                     save_path="reports/figures/predictions_vs_ground_truth.png")
+
+    if not os.path.exists(model_save_path.parent):
+        os.makedirs(model_save_path.parent)
+
+    try:
+        # Save the model
+        torch.save(model.state_dict(), model_save_path)
+        print(f"Model saved to {model_save_path}")
+    except Exception as e:
+        print(f"Error saving the model: {e}")
 
 
 if __name__ == "__main__":
