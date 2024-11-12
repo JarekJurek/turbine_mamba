@@ -11,6 +11,7 @@ torch
 pandas
 tqdm
 transformers
+matplotlib
 
 # APT packages for working on Ubuntu (DTU's HPC)
 # sudo apt install nvidia-cuda-toolkit

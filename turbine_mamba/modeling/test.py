@@ -1,6 +1,7 @@
 import torch
 from tqdm import tqdm
 
+
 def test_model(model, dataloader, device):
     """
     Test the model on the test dataset.
@@ -11,7 +12,7 @@ def test_model(model, dataloader, device):
         device (torch.device): Device to test on (CPU/GPU).
 
     Returns:
-        list: Predictions and ground truth for further analysis.
+        tuple: Predictions and ground truth as NumPy arrays for further analysis.
     """
     model.eval()
     predictions = []
@@ -26,4 +27,4 @@ def test_model(model, dataloader, device):
             predictions.append(outputs.cpu())
             ground_truth.append(targets.cpu())
 
-    return torch.cat(predictions, dim=0), torch.cat(ground_truth, dim=0)
+    return torch.cat(predictions, dim=0).numpy(), torch.cat(ground_truth, dim=0).numpy()
