@@ -43,7 +43,7 @@ def main():
     criterion = MSELoss()
     optimizer = Adam(model.fc.parameters(), lr=learning_rate)  # Train only FC layers
 
-    train_loader, val_loader, test_loader = get_dataloaders(files_dir, files, model_name, batch_size, sample_fraction=0.5)
+    train_loader, val_loader, test_loader = get_dataloaders(files_dir, files, model_name, batch_size, sample_fraction=0.01)
 
     train_model(epochs, model, train_loader, val_loader, optimizer, criterion, device)
 

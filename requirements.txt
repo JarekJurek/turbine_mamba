@@ -15,6 +15,6 @@ transformers
 # APT packages for working on Ubuntu (DTU's HPC)
 # sudo apt install nvidia-cuda-toolkit
 
-# Mamba from huggingface
-causal-conv1d>=1.2.0
-mamba-ssm
+# Mamba requirements from huggingface
+# causal-conv1d>=1.2.0
+# mamba-ssm

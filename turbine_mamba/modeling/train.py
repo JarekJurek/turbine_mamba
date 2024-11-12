@@ -18,7 +18,7 @@ def train_one_epoch(model, dataloader, optimizer, criterion, device):
     model.train()
     total_loss = 0
 
-    for inputs, targets in tqdm(dataloader, desc="Training"):
+    for inputs, targets in tqdm(dataloader, desc="Training epoch"):
         targets = targets.to(device)  # Inputs are already tokenized text
 
         # Forward pass

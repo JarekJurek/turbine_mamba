@@ -47,8 +47,7 @@ class WindTurbineModel(nn.Module):
         """
         # Tokenize inputs
         tokenizer = AutoTokenizer.from_pretrained(self.pretrained_model_name)
-        inputs = tokenizer(x, return_tensors="pt", padding=True, truncation=True).to(
-            next(self.mamba.parameters()).device)
+        inputs = tokenizer(x, return_tensors="pt", padding=True, truncation=True, max_length=512).to(next(self.mamba.parameters()).device)
 
         # Pass through the pretrained Mamba model
         x = self.mamba(**inputs).last_hidden_state  # (batch_size, seq_len, hidden_size)

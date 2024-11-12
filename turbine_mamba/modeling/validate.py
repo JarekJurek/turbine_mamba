@@ -18,7 +18,7 @@ def validate_one_epoch(model, dataloader, criterion, device):
     total_loss = 0
 
     with torch.no_grad():
-        for inputs, targets in tqdm(dataloader, desc="Validation"):
+        for inputs, targets in tqdm(dataloader, desc="Validating epoch"):
             targets = targets.to(device)  # Inputs are already tokenized text
 
             # Forward pass
