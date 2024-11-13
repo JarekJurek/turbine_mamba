@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import numpy as np
 import torch
 from torch.nn import MSELoss
 from torch.optim import Adam
@@ -41,6 +42,7 @@ def train_model(epochs, model, train_loader, val_loader, optimizer, criterion, d
 def main():
     project_dir = Path(__file__).parent
     model_save_path = project_dir / "models" / "wind_turbine_model.pth"
+    predictions_save_path = project_dir / "models" / "predictions_ground_truth.npz"
     files_dir = project_dir / "data" / "raw"  # Replace with your directory path
     files = [
         "wind_speed_11_n.csv", "wind_speed_13_n.csv",
@@ -82,6 +84,10 @@ def main():
         # Save the model
         torch.save(model.state_dict(), model_save_path)
         print(f"Model saved to {model_save_path}")
+        if not predictions_save_path.parent.exists():
+            predictions_save_path.parent.mkdir(parents=True, exist_ok=True)
+        np.savez(predictions_save_path, predictions=predictions, ground_truth=ground_truth)
+        print(f"Predictions and ground truth saved to {predictions_save_path}")
     except Exception as e:
         print(f"Error saving the model: {e}")
 

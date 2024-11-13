@@ -34,29 +34,27 @@ def plot_loss_and_metrics(train_losses, val_losses, metric_values, metric_name="
 
 def plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], save_path=None):
     """
-    Plot predicted vs. ground truth values for each output, and optionally save the plot.
+    Plot ground truth and predictions as separate line plots for each output.
 
     Args:
         predictions (torch.Tensor or np.ndarray): Predicted values (batch_size, num_outputs).
         ground_truth (torch.Tensor or np.ndarray): Ground truth values (batch_size, num_outputs).
         labels (list): List of labels for the outputs.
-        save_path (str): Path to save the plot. If None, the plot will be displayed.
+        save_path (str): Path to save the plot. If None, the plots will be displayed.
     """
     predictions = np.array(predictions)
     ground_truth = np.array(ground_truth)
 
     num_outputs = predictions.shape[1]
-    plt.figure(figsize=(15, 5))
+    plt.figure(figsize=(15, 5 * num_outputs))  # Adjust figure size to fit multiple plots
 
     for i in range(num_outputs):
-        plt.subplot(1, num_outputs, i + 1)
-        plt.scatter(ground_truth[:, i], predictions[:, i], alpha=0.6)
-        plt.plot([ground_truth[:, i].min(), ground_truth[:, i].max()],
-                 [ground_truth[:, i].min(), ground_truth[:, i].max()],
-                 color="red", linestyle="--", label="Perfect Prediction")
-        plt.xlabel(f"Ground Truth {labels[i]}")
-        plt.ylabel(f"Predicted {labels[i]}")
-        plt.title(f"{labels[i]}: Predicted vs. Ground Truth")
+        plt.subplot(num_outputs, 1, i + 1)
+        plt.plot(ground_truth[:, i], label=f"{labels[i]} Ground Truth", linestyle="-", color="blue")
+        plt.plot(predictions[:, i], label=f"{labels[i]} Predictions", linestyle="--", color="orange")
+        plt.xlabel("Data Point Index")
+        plt.ylabel("Momentum Values")
+        plt.title(f"{labels[i]}: Predictions vs Ground Truth")
         plt.legend()
         plt.grid()
 
@@ -64,7 +62,7 @@ def plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], sa
 
     if save_path:
         plt.savefig(save_path)
-        print(f"Plot saved to {save_path}")
+        print(f"Plots saved to {save_path}")
     else:
         plt.show()
 

@@ -4,7 +4,6 @@ flake8
 isort
 pip
 python-dotenv
--e .
 
 # Project libraries
 torch
