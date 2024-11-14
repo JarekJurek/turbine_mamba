@@ -8,7 +8,6 @@ python-dotenv
 # Project libraries
 torch
 pandas
-tqdm
 transformers
 matplotlib
 

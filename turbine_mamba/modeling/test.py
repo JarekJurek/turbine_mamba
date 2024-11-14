@@ -1,5 +1,4 @@
 import torch
-from tqdm import tqdm
 
 
 def test_model(model, dataloader, device):
@@ -19,7 +18,7 @@ def test_model(model, dataloader, device):
     ground_truth = []
 
     with torch.no_grad():
-        for inputs, targets in tqdm(dataloader, desc="Testing"):
+        for inputs, targets in dataloader:
             targets = targets.to(device)  # Inputs are already tokenized text
 
             # Forward pass

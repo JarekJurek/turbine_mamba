@@ -4,7 +4,6 @@ from pathlib import Path
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
-from tqdm import tqdm
 
 
 from transformers import AutoTokenizer
@@ -22,7 +21,7 @@ class WindTurbineDataset(Dataset):
             sample_fraction (float): Fraction of the dataset to use (0.0 to 1.0).
         """
         self.data = []
-        for file_path in tqdm(file_paths, desc="Loading dataset files", mininterval=0.1):
+        for file_path in file_paths:
             # Load each CSV file and append to the data list
             df = pd.read_csv(file_path)
             self.data.append(df)
