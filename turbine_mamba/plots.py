@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -32,7 +34,7 @@ def plot_loss_and_metrics(train_losses, val_losses, metric_values, metric_name="
 
     plt.close()
 
-def plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], save_path=None):
+def plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], save_path: Path=None, num_points=None):
     """
     Plot ground truth and predictions as separate line plots for each output.
 
@@ -41,9 +43,16 @@ def plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], sa
         ground_truth (torch.Tensor or np.ndarray): Ground truth values (batch_size, num_outputs).
         labels (list): List of labels for the outputs.
         save_path (str): Path to save the plot. If None, the plots will be displayed.
+        num_points (int): Number of data points to plot (X-axis size).
     """
     predictions = np.array(predictions)
     ground_truth = np.array(ground_truth)
+
+    # Limit to specified number of data points
+    if num_points is not None:
+        print(f'Plotting for {num_points} points.')
+        predictions = predictions[:num_points, :]
+        ground_truth = ground_truth[:num_points, :]
 
     num_outputs = predictions.shape[1]
     plt.figure(figsize=(15, 5 * num_outputs))  # Adjust figure size to fit multiple plots
@@ -51,7 +60,7 @@ def plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], sa
     for i in range(num_outputs):
         plt.subplot(num_outputs, 1, i + 1)
         plt.plot(ground_truth[:, i], label=f"{labels[i]} Ground Truth", linestyle="-", color="blue")
-        plt.plot(predictions[:, i], label=f"{labels[i]} Predictions", linestyle="--", color="orange")
+        plt.plot(predictions[:, i], label=f"{labels[i]} Predictions", linestyle="--", color="red")
         plt.xlabel("Data Point Index")
         plt.ylabel("Momentum Values")
         plt.title(f"{labels[i]}: Predictions vs Ground Truth")

@@ -54,14 +54,15 @@ def main():
     # Hyperparameters
     model_name = "state-spaces/mamba-130m-hf"
     batch_size = 32
-    epochs = 80
+    epochs = 30
     learning_rate = 1e-3
+    sample_fraction = 0.005
     model = WindTurbineModel(model_name).to(device)
     criterion = MSELoss()
     optimizer = Adam(model.fc.parameters(), lr=learning_rate)  # Train only FC layers
 
     train_loader, val_loader, test_loader = get_dataloaders(files_dir, files, model_name, batch_size,
-                                                            sample_fraction=0.005)
+                                                            sample_fraction=sample_fraction)
 
     predictions, ground_truth, train_losses, val_losses, metric_values = train_model(
         epochs, model, train_loader, val_loader, optimizer, criterion, device
