@@ -4,35 +4,47 @@ from pathlib import Path
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
-
-
 from transformers import AutoTokenizer
+
 
 class WindTurbineDataset(Dataset):
     """
     Custom Dataset for Wind Turbine Data
     """
 
-    def __init__(self, file_paths, tokenizer_name, sample_fraction=1.0):
+    def __init__(self, file_paths, tokenizer_name, slice_size=100, step=3, max_slices=None):
         """
         Args:
             file_paths (list of str): List of CSV file paths.
             tokenizer_name (str): Name of the Hugging Face tokenizer to use.
-            sample_fraction (float): Fraction of the dataset to use (0.0 to 1.0).
+            slice_size (int): Number of data points per slice.
+            step (int): Step size for down sampling within each slice (e.g., keep every 3rd or 4th point).
+            max_slices (int): Maximum number of slices to extract from each file.
         """
         self.data = []
         for file_path in file_paths:
-            # Load each CSV file and append to the data list
+            # Load each CSV file
             df = pd.read_csv(file_path)
-            self.data.append(df)
+
+            # Calculate the total number of slices available
+            num_slices = len(df) // slice_size
+
+            # If max_slices is specified, limit the number of slices
+            if max_slices is not None:
+                num_slices = min(num_slices, max_slices)
+
+            # Extract the slices
+            for i in range(num_slices):
+                start_idx = i * slice_size
+                end_idx = start_idx + slice_size
+                slice_df = df.iloc[start_idx:end_idx]
+
+                # Downsample the slice
+                downsampled_slice = slice_df.iloc[::step]
+                self.data.append(downsampled_slice)
+
+        # Combine all slices into a single DataFrame
         self.data = pd.concat(self.data, ignore_index=True)
-
-        # Optionally take a fraction of the dataset
-        if sample_fraction < 1.0:
-            self.data = self.data.sample(frac=sample_fraction, random_state=42).reset_index(drop=True)
-
-        # Normalize data
-        self.data = (self.data - self.data.mean()) / self.data.std()
 
         # Initialize the tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
@@ -51,8 +63,7 @@ class WindTurbineDataset(Dataset):
         return input_text, torch.tensor(target, dtype=torch.float32)
 
 
-
-def get_dataloaders(file_dir: Path, file_names, tokenizer_name, batch_size=32, sample_fraction=1.0):
+def get_dataloaders(file_dir: Path, file_names, tokenizer_name, batch_size=32, slice_size=100, step=3, max_slices=None):
     """
     Creates train, validation, and test dataloaders.
 
@@ -61,7 +72,9 @@ def get_dataloaders(file_dir: Path, file_names, tokenizer_name, batch_size=32, s
         file_names (list of str): List of file names to load.
         tokenizer_name (str): Name of the Hugging Face tokenizer to use.
         batch_size (int): Batch size for the dataloaders.
-        sample_fraction (float): Fraction of the dataset to use (0.0 to 1.0).
+        slice_size (int): Number of data points per slice.
+        step (int): Step size for downsampling within each slice (e.g., keep every 3rd or 4th point).
+        max_slices (int): Maximum number of slices to extract from each file.
 
     Returns:
         tuple: train_loader, val_loader, test_loader
@@ -69,7 +82,7 @@ def get_dataloaders(file_dir: Path, file_names, tokenizer_name, batch_size=32, s
     file_paths = [os.path.join(file_dir, file) for file in file_names]
 
     # Create the full dataset
-    full_dataset = WindTurbineDataset(file_paths, tokenizer_name, sample_fraction)
+    full_dataset = WindTurbineDataset(file_paths, tokenizer_name, slice_size, step, max_slices)
 
     # Split dataset into train, validation, and test sets
     torch.manual_seed(42)  # Ensure reproducibility
@@ -85,7 +98,6 @@ def get_dataloaders(file_dir: Path, file_names, tokenizer_name, batch_size=32, s
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader, test_loader
-
 
 
 def test_dataloader():
