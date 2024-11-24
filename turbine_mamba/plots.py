@@ -34,7 +34,7 @@ def plot_loss_and_metrics(train_losses, val_losses, metric_values, metric_name="
 
     plt.close()
 
-def plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], save_path: Path=None, num_points=None):
+def plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], save_path: Path=None, num_points=100):
     """
     Plot ground truth and predictions as separate line plots for each output.
 

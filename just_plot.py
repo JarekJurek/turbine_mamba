@@ -28,7 +28,7 @@ def main():
         ground_truth,
         labels=["Mz1", "Mz2", "Mz3"],
         save_path=plot_save_path,
-        num_points=200
+        num_points=100
     )
 
 if __name__ == "__main__":
