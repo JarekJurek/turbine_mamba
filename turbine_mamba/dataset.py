@@ -46,6 +46,9 @@ class WindTurbineDataset(Dataset):
         # Combine all slices into a single DataFrame
         self.data = pd.concat(self.data, ignore_index=True)
 
+        # Normalize data
+        self.data = (self.data - self.data.mean()) / self.data.std()
+
         # Initialize the tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
