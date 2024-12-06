@@ -35,24 +35,19 @@ class WindTurbineModel(nn.Module):
             nn.Linear(128, 3)  # Output layer (3 outputs: Mz1, Mz2, Mz3)
         )
 
-    def forward(self, x):
+    def forward(self, input_ids, attention_mask):
         """
         Forward pass through the model.
 
         Args:
-            x (list of str): Input sequences as text.
+            input_ids (torch.Tensor): Tokenized input ids.
+            attention_mask (torch.Tensor): Attention masks.
 
         Returns:
             torch.Tensor: Model output.
         """
-        # Tokenize inputs
-        tokenizer = AutoTokenizer.from_pretrained(self.pretrained_model_name)
-        inputs = tokenizer(x, return_tensors="pt", padding=True, truncation=True, max_length=512).to(next(self.mamba.parameters()).device)
-
-        # Pass through the pretrained Mamba model
-        x = self.mamba(**inputs).last_hidden_state  # (batch_size, seq_len, hidden_size)
+        # Removed tokenization here
+        x = self.mamba(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
         x = x.mean(dim=1)  # Pooling: Mean over sequence length
-
-        # Pass through fully connected layers
         x = self.fc(x)
         return x

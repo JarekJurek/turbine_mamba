@@ -17,11 +17,13 @@ def train_one_epoch(model, dataloader, optimizer, criterion, device):
     model.train()
     total_loss = 0
     print('Training...')
-    for inputs, targets in dataloader:
-        targets = targets.to(device)  # Inputs are already tokenized text
+    for input_ids, attention_mask, targets in dataloader:
+        input_ids = input_ids.to(device)
+        attention_mask = attention_mask.to(device)
+        targets = targets.to(device)
 
         # Forward pass
-        outputs = model(inputs)  # Model handles tokenization internally
+        outputs = model(input_ids, attention_mask)
         loss = criterion(outputs, targets)
 
         # Backward pass
