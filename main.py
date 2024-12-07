@@ -7,7 +7,7 @@ from torch.nn import MSELoss
 from torch.optim import AdamW
 from transformers import get_scheduler
 
-from turbine_mamba import WindTurbineModel, get_dataloaders, test_model, train_one_epoch, validate_one_epoch
+from turbine_mamba import WindTurbineModel, get_dataloaders, test_model, train_one_epoch, validate_one_epoch, preprocess_and_save_data
 from turbine_mamba.metrics import compute_r2
 from turbine_mamba.plots import plot_loss_and_metrics, plot_predictions
 
@@ -45,7 +45,8 @@ def main():
     project_dir = Path(__file__).parent
     model_save_path = project_dir / "models" / "wind_turbine_model.pth"
     predictions_save_path = project_dir / "models" / "predictions_ground_truth.npz"
-    files_dir = project_dir / "data" / "raw"
+    preprocessed_data_path = project_dir / "data/preprocessed/preprocessed_data.pt"
+    files_dir = project_dir / "data/raw"
     files = [
         "wind_speed_11_n.csv", "wind_speed_13_n.csv",
         "wind_speed_15_n.csv", "wind_speed_17_n.csv", "wind_speed_19_n.csv"
@@ -62,6 +63,24 @@ def main():
     step = 4
     max_slices = 4
 
+    # Preprocess data if not already done
+    if not preprocessed_data_path.exists():
+        preprocess_and_save_data(
+            file_dir=files_dir,
+            file_names=files,
+            tokenizer_name=model_name,
+            save_path=preprocessed_data_path,
+            slice_size=slice_size,
+            step=step,
+            max_slices=max_slices
+        )
+
+    # Load preprocessed DataLoaders
+    train_loader, val_loader, test_loader = get_dataloaders(
+        preprocessed_data_path=preprocessed_data_path,
+        batch_size=batch_size
+    )
+
     # Initialize model
     model = WindTurbineModel(model_name).to(device)
 
@@ -72,9 +91,6 @@ def main():
     ])
 
     # Scheduler: Linear schedule
-    train_loader, val_loader, test_loader = get_dataloaders(
-        files_dir, files, model_name, batch_size, slice_size, step, max_slices
-    )
     total_steps = epochs * len(train_loader)
     scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=total_steps)
 
