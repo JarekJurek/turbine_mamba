@@ -10,6 +10,19 @@ from turbine_mamba import WindTurbineModel, get_dataloaders, test_model, train_o
 from turbine_mamba.metrics import compute_r2  # Implemented compute_r2 in metrics.py
 from turbine_mamba.plots import plot_loss_and_metrics, plot_predictions
 
+def denormalize(predictions, target_mean, target_std):
+    """
+    Denormalize predictions to original scale.
+
+    Args:
+        predictions (np.ndarray): Normalized predictions.
+        target_mean (pd.Series): Mean values of target features.
+        target_std (pd.Series): Standard deviation of target features.
+
+    Returns:
+        np.ndarray: Denormalized predictions.
+    """
+    return predictions * target_std.values + target_mean.values
 
 def train_model(epochs, model, train_loader, val_loader, optimizer, criterion, device):
     train_losses = []
@@ -52,7 +65,7 @@ def main():
     # Hyperparameters
     model_name = "state-spaces/mamba-130m-hf"
     batch_size = 32
-    epochs = 1
+    epochs = 3
     learning_rate = 1e-3
     slice_size = 2000
     step = 4
@@ -61,12 +74,13 @@ def main():
     criterion = MSELoss()
     optimizer = Adam(model.fc.parameters(), lr=learning_rate)  # Train only FC layers
 
-    train_loader, val_loader, test_loader = get_dataloaders(files_dir, files, model_name, batch_size, slice_size, step,
-                                                            max_slices)
+    train_loader, val_loader, test_loader, normalization_stats = get_dataloaders(files_dir, files, model_name, batch_size, slice_size, step,
+                                                                                 max_slices)
 
     predictions, ground_truth, train_losses, val_losses, metric_values = train_model(
         epochs, model, train_loader, val_loader, optimizer, criterion, device
     )
+
 
     # Plot loss and metrics
     plot_loss_and_metrics(train_losses, val_losses, metric_values, metric_name="R² Score",
@@ -74,6 +88,12 @@ def main():
 
     # Testing
     predictions, ground_truth = test_model(model, test_loader, device)
+
+    # Denormalize predictions and ground truth
+    target_mean, target_std = normalization_stats["target_mean"], normalization_stats["target_std"]
+    predictions = denormalize(predictions, target_mean, target_std)
+    ground_truth = denormalize(ground_truth, target_mean, target_std)
+
     print(f"Test Predictions: {predictions.shape}, Ground Truth: {ground_truth.shape}")
     plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"],
                      save_path="reports/figures/predictions_vs_ground_truth.png")
