@@ -4,19 +4,19 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch.nn import MSELoss
-from torch.optim import Adam
+from torch.optim import AdamW
+from transformers import get_scheduler
 
 from turbine_mamba import WindTurbineModel, get_dataloaders, test_model, train_one_epoch, validate_one_epoch
-from turbine_mamba.metrics import compute_r2  # Implemented compute_r2 in metrics.py
+from turbine_mamba.metrics import compute_r2
 from turbine_mamba.plots import plot_loss_and_metrics, plot_predictions
 
 
-def train_model(epochs, model, train_loader, val_loader, optimizer, criterion, device):
+def train_model(epochs, model, train_loader, val_loader, optimizer, scheduler, criterion, device):
     train_losses = []
     val_losses = []
     metric_values = []
 
-    # Training and Validation
     for epoch in range(epochs):
         print(f"Epoch {epoch + 1}/{epochs}")
 
@@ -26,24 +26,26 @@ def train_model(epochs, model, train_loader, val_loader, optimizer, criterion, d
         print(f"Train Loss: {train_loss:.4f}")
 
         # Validate
-        val_loss = validate_one_epoch(model, val_loader, criterion, device)
+        val_loss, val_predictions, val_ground_truth = validate_one_epoch(model, val_loader, criterion, device)
         val_losses.append(val_loss)
         print(f"Validation Loss: {val_loss:.4f}")
 
-        # Compute a metric (e.g., R² score for validation predictions)
-        predictions, ground_truth = test_model(model, val_loader, device)
-        r2_score = compute_r2(predictions, ground_truth)
+        # Compute R² score
+        r2_score = compute_r2(val_predictions, val_ground_truth)
         metric_values.append(r2_score)
         print(f"Validation R² Score: {r2_score:.4f}")
 
-    return predictions, ground_truth, train_losses, val_losses, metric_values
+        # Step scheduler
+        scheduler.step()
+
+    return train_losses, val_losses, metric_values
 
 
 def main():
     project_dir = Path(__file__).parent
     model_save_path = project_dir / "models" / "wind_turbine_model.pth"
     predictions_save_path = project_dir / "models" / "predictions_ground_truth.npz"
-    files_dir = project_dir / "data" / "raw"  # Replace with your directory path
+    files_dir = project_dir / "data" / "raw"
     files = [
         "wind_speed_11_n.csv", "wind_speed_13_n.csv",
         "wind_speed_15_n.csv", "wind_speed_17_n.csv", "wind_speed_19_n.csv"
@@ -55,19 +57,33 @@ def main():
     model_name = "state-spaces/mamba-130m-hf"
     batch_size = 32
     epochs = 30
-    learning_rate = 1e-3
+    fc_learning_rate = 1e-3  # Higher learning rate for FC layers
     slice_size = 2000
     step = 4
-    max_slices = 4  # numer_of_samples_per_file: (slice_size / step) * max_slices
+    max_slices = 4
+
+    # Initialize model
     model = WindTurbineModel(model_name).to(device)
+
+    # Define optimizer with separate learning rates
+    optimizer = AdamW([
+        {"params": model.mamba.parameters(), "lr": 5e-5},  # Lower LR for pretrained layers
+        {"params": model.regression_head.parameters(), "lr": fc_learning_rate}  # Higher LR for custom regression head
+    ])
+
+    # Scheduler: Linear schedule
+    train_loader, val_loader, test_loader = get_dataloaders(
+        files_dir, files, model_name, batch_size, slice_size, step, max_slices
+    )
+    total_steps = epochs * len(train_loader)
+    scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=total_steps)
+
+    # Loss function
     criterion = MSELoss()
-    optimizer = Adam(model.fc.parameters(), lr=learning_rate)  # Train only FC layers
 
-    train_loader, val_loader, test_loader = get_dataloaders(files_dir, files, model_name, batch_size, slice_size, step,
-                                                            max_slices)
-
-    predictions, ground_truth, train_losses, val_losses, metric_values = train_model(
-        epochs, model, train_loader, val_loader, optimizer, criterion, device
+    # Training loop
+    train_losses, val_losses, metric_values = train_model(
+        epochs, model, train_loader, val_loader, optimizer, scheduler, criterion, device
     )
 
     # Plot loss and metrics

@@ -1,4 +1,4 @@
-import torch
+from tqdm import tqdm
 
 def train_one_epoch(model, dataloader, optimizer, criterion, device):
     """
@@ -16,8 +16,7 @@ def train_one_epoch(model, dataloader, optimizer, criterion, device):
     """
     model.train()
     total_loss = 0
-    print('Training...')
-    for input_ids, attention_mask, targets in dataloader:
+    for input_ids, attention_mask, targets in tqdm(dataloader, desc="Training"):
         input_ids = input_ids.to(device)
         attention_mask = attention_mask.to(device)
         targets = targets.to(device)

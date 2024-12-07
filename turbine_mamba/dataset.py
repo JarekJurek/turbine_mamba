@@ -31,7 +31,13 @@ class WindTurbineDataset(Dataset):
         target = row[['Mz1', 'Mz2', 'Mz3']].values.astype(float)
 
         input_text = " ".join(inputs)
-        tokenized = self.tokenizer(input_text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+        tokenized = self.tokenizer(
+            input_text,
+            return_tensors="pt",
+            padding='max_length',     # Explicitly pad all sequences to max_length
+            truncation=True,
+            max_length=64
+        )
         input_ids = tokenized["input_ids"].squeeze(0)
         attention_mask = tokenized["attention_mask"].squeeze(0)
 

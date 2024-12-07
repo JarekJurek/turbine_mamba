@@ -1,8 +1,10 @@
 import torch
+from tqdm import tqdm
+
 
 def validate_one_epoch(model, dataloader, criterion, device):
     """
-    Validate the model for one epoch.
+    Validate the model for one epoch and return predictions and ground truth for metric computation.
 
     Args:
         model (torch.nn.Module): The model to validate.
@@ -11,15 +13,15 @@ def validate_one_epoch(model, dataloader, criterion, device):
         device (torch.device): Device to validate on (CPU/GPU).
 
     Returns:
-        float: Average validation loss for the epoch.
+        tuple: Average validation loss, predictions, and ground truth as NumPy arrays.
     """
     model.eval()
     total_loss = 0
+    predictions = []
+    ground_truth = []
 
     with torch.no_grad():
-        print('Validating...')
-
-        for input_ids, attention_mask, targets in dataloader:
+        for input_ids, attention_mask, targets in tqdm(dataloader, desc='Validating'):
             input_ids = input_ids.to(device)
             attention_mask = attention_mask.to(device)
             targets = targets.to(device)
@@ -29,5 +31,11 @@ def validate_one_epoch(model, dataloader, criterion, device):
             loss = criterion(outputs, targets)
             total_loss += loss.item()
 
+            predictions.append(outputs.cpu())
+            ground_truth.append(targets.cpu())
+
     avg_loss = total_loss / len(dataloader)
-    return avg_loss
+    predictions = torch.cat(predictions, dim=0).numpy()
+    ground_truth = torch.cat(ground_truth, dim=0).numpy()
+
+    return avg_loss, predictions, ground_truth

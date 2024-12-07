@@ -1,38 +1,30 @@
-import torch
+from transformers import AutoModel
 import torch.nn as nn
-from transformers import AutoModel, AutoTokenizer
 
 
 class WindTurbineModel(nn.Module):
-    def __init__(self, pretrained_model_name):
+    def __init__(self, pretrained_model_name, num_labels=3):
         """
-        Initializes the model with a pretrained Mamba model and custom FC layers.
+        Initializes the model with a pretrained Mamba model and a custom regression head.
 
         Args:
-            pretrained_model_name (str): Name of the pretrained model (Hugging Face model hub).
+            pretrained_model_name (str): Name of the pretrained Mamba model.
+            num_labels (int): Number of output labels (e.g., Mz1, Mz2, Mz3).
         """
-        self.pretrained_model_name = pretrained_model_name
         super(WindTurbineModel, self).__init__()
+        print(f"Loading {pretrained_model_name}...")
+        self.mamba = AutoModel.from_pretrained(pretrained_model_name)  # Load Mamba model
+        print(f"Model loaded.")
 
-        # Load the pretrained Mamba model
-        print(f"Loading {self.pretrained_model_name}...")
-        self.mamba = AutoModel.from_pretrained(self.pretrained_model_name)
-        print(f"Loading completed.")
+        # Get the hidden size from the config
+        input_dim = self.mamba.config.hidden_size
 
-        # Freeze the pretrained model's parameters
-        for param in self.mamba.parameters():
-            param.requires_grad = False
-
-        # FC layers
-        input_dim = self.mamba.config.hidden_size  # Hidden size of Mamba model
-        self.fc = nn.Sequential(
-            nn.Linear(input_dim, 256),  # First FC layer
+        # Add a regression head
+        self.regression_head = nn.Sequential(
+            nn.Linear(input_dim, 128),
             nn.ReLU(),
-            nn.Dropout(0.2),  # Regularization
-            nn.Linear(256, 128),  # Second FC layer
-            nn.ReLU(),
-            nn.Dropout(0.2),  # Regularization
-            nn.Linear(128, 3)  # Output layer (3 outputs: Mz1, Mz2, Mz3)
+            nn.Dropout(0.2),
+            nn.Linear(128, num_labels)
         )
 
     def forward(self, input_ids, attention_mask):
@@ -46,8 +38,7 @@ class WindTurbineModel(nn.Module):
         Returns:
             torch.Tensor: Model output.
         """
-        # Removed tokenization here
-        x = self.mamba(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
-        x = x.mean(dim=1)  # Pooling: Mean over sequence length
-        x = self.fc(x)
-        return x
+        outputs = self.mamba(input_ids=input_ids, attention_mask=attention_mask)
+        pooled_output = outputs.last_hidden_state.mean(dim=1)  # Mean pooling
+        logits = self.regression_head(pooled_output)
+        return logits
