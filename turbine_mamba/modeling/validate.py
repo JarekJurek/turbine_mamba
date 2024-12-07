@@ -16,6 +16,8 @@ def validate_one_epoch(model, dataloader, criterion, device):
     """
     model.eval()
     total_loss = 0
+    predictions = []
+    ground_truth = []
 
     with torch.no_grad():
         for inputs, targets in tqdm(dataloader, desc="Validating"):
@@ -26,5 +28,11 @@ def validate_one_epoch(model, dataloader, criterion, device):
             loss = criterion(outputs, targets)
             total_loss += loss.item()
 
+            predictions.append(outputs.cpu())
+            ground_truth.append(targets.cpu())
+    
+    predictions = torch.cat(predictions, dim=0).numpy()
+    ground_truth = torch.cat(ground_truth, dim=0).numpy()
     avg_loss = total_loss / len(dataloader)
-    return avg_loss
+
+    return avg_loss, predictions, ground_truth

@@ -23,18 +23,16 @@ def train_model(epochs, model, train_loader, val_loader, optimizer, criterion, d
         # Train
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
         train_losses.append(train_loss)
-        print(f"Train Loss: {train_loss:.4f}")
 
         # Validate
-        val_loss = validate_one_epoch(model, val_loader, criterion, device)
+        val_loss, predictions, ground_truth = validate_one_epoch(model, val_loader, criterion, device)
         val_losses.append(val_loss)
-        print(f"Validation Loss: {val_loss:.4f}")
 
         # Compute a metric (e.g., R² score for validation predictions)
-        predictions, ground_truth = test_model(model, val_loader, device)
         r2_score = compute_r2(predictions, ground_truth)
         metric_values.append(r2_score)
-        print(f"Validation R² Score: {r2_score:.4f}")
+
+        print(f"TRAIN Loss: {train_loss:.4f}, VAL Loss: {val_loss:.4f}, R²: {r2_score:.4f}")
 
     return predictions, ground_truth, train_losses, val_losses, metric_values
 
@@ -54,7 +52,7 @@ def main():
     # Hyperparameters
     model_name = "state-spaces/mamba-130m-hf"
     batch_size = 32
-    epochs = 30
+    epochs = 1
     learning_rate = 1e-3
     slice_size = 2000
     step = 4
