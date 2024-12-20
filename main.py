@@ -64,15 +64,15 @@ def main():
 
     # Hyperparameters
     model_name = "state-spaces/mamba-130m-hf"
-    batch_size = 32
-    epochs = 3
+    batch_size = 16
+    epochs = 10
     learning_rate = 1e-3
     slice_size = 2000
     step = 4
     max_slices = 4  # numer_of_samples_per_file: (slice_size / step) * max_slices
     model = WindTurbineModel(model_name).to(device)
     criterion = MSELoss()
-    optimizer = Adam(model.fc.parameters(), lr=learning_rate)  # Train only FC layers
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
 
     train_loader, val_loader, test_loader, normalization_stats = get_dataloaders(files_dir, files, model_name, batch_size, slice_size, step,
                                                                                  max_slices)

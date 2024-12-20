@@ -21,7 +21,7 @@ class WindTurbineModel(nn.Module):
 
         # Freeze the pretrained model's parameters
         for param in self.mamba.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
 
         # FC layers
         input_dim = self.mamba.config.hidden_size  # Hidden size of Mamba model
