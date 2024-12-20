@@ -3,7 +3,6 @@
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
-from turbine_mamba.plots import plot_predictions  # Assumes an existing `plot_predictions` function
 
 
 def ensure_directory_exists(path):
@@ -74,12 +73,7 @@ def plot_combined(predictions, ground_truth, residuals, label, save_path, num_po
     plt.legend(loc="upper right")  # Set legend to the top-right corner
     plt.grid()
 
-    # Save the figure
-    ensure_directory_exists(save_path)
-    plt.tight_layout()
-    plt.savefig(save_path)
-    plt.close()
-    print(f"Combined plot saved to {save_path}")
+    plt.show()
 
 
 def plot_scatter_predictions_vs_ground_truth(predictions, ground_truth, label, save_path, alpha=0.6):
@@ -111,11 +105,7 @@ def plot_scatter_predictions_vs_ground_truth(predictions, ground_truth, label, s
     plt.legend(loc="upper right")  # Legend in the top-right corner
     plt.grid()
 
-    # Save the figure
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(save_path)
-    plt.close()
-    print(f"Scatter plot saved to {save_path}")
+    plt.show()
 
 
 def main():
@@ -125,7 +115,7 @@ def main():
     num_points = 100
 
     # Paths setup
-    project_dir = Path(__file__).parent
+    project_dir = Path(__file__).parent.parent.parent
     data_path = project_dir / "predictions_ground_truth.npz"
     output_dir = project_dir
 
@@ -149,7 +139,7 @@ def main():
 
         # Generate the combined plot
         plot_combined(pred, gt, residuals, label, save_path, num_points)
-        # plot_scatter_predictions_vs_ground_truth(pred, gt, label, save_path)
+        plot_scatter_predictions_vs_ground_truth(pred, gt, label, save_path)
 
 
 if __name__ == "__main__":

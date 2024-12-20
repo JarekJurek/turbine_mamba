@@ -59,9 +59,8 @@ def plot_residuals(residuals, labels, save_path, num_points=None):
     plt.legend()
     plt.grid()
     ensure_directory_exists(save_path)
-    plt.savefig(save_path)
-    plt.close()
-    print(f"Residuals plot saved to {save_path}")
+
+    plt.show()
 
 
 def compute_and_plot(data_path, plot_path, labels, plot_type="comparison", num_points=100):
@@ -109,18 +108,17 @@ def main():
     num_points = 100
 
     # Paths setup
-    project_dir = Path(__file__).parent
+    project_dir = Path(__file__).parent.parent.parent
     data_path = project_dir / "predictions_ground_truth.npz"
 
-    # Plot predictions vs ground truths
-    # comparison_plot_path = project_dir / "reports" / run_dir / "comparison_plot.png"
-    # compute_and_plot(
-    #     data_path=data_path,
-    #     plot_path=comparison_plot_path,
-    #     labels=labels,
-    #     plot_type="comparison",
-    #     num_points=num_points
-    # )
+    comparison_plot_path = project_dir / "reports" / run_dir / "comparison_plot.png"
+    compute_and_plot(
+        data_path=data_path,
+        plot_path=comparison_plot_path,
+        labels=labels,
+        plot_type="comparison",
+        num_points=num_points
+    )
 
     # Plot residuals
     residuals_plot_path = project_dir / "residuals_plot.png"

@@ -69,10 +69,6 @@ def plot_predictions(predictions, ground_truth, labels=["Mz1", "Mz2", "Mz3"], sa
 
     plt.tight_layout()
 
-    if save_path:
-        plt.savefig(save_path)
-        print(f"Plots saved to {save_path}")
-    else:
-        plt.show()
+    plt.show()
 
     plt.close()
