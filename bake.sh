@@ -1,6 +1,6 @@
 #!/bin/bash
 ### --------------- specify queue name ----------------
-#BSUB -q c02516
+#BSUB -q gpuv100
 
 ### --------------- specify GPU request ---------------
 #BSUB -gpu "num=1:mode=exclusive_process"
@@ -23,6 +23,6 @@
 #BSUB -e bake_output%J.err
 
 ### --------------- Load environment and run Python script ---------------
-source /zhome/a2/c/213547/turbine_mamba/venv/bin/activate
-python /zhome/a2/c/213547/turbine_mamba/main.py
+source ~/turbine_mamba/my_venv/bin/activate
+python ~/turbine_mamba/main.py
 

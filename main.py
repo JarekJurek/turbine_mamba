@@ -1,35 +1,100 @@
+
 import os
 from pathlib import Path
 
 import numpy as np
 import torch
-from torch.nn import MSELoss
+from torch import nn
 from torch.optim import Adam
+from torch.utils.data import DataLoader
 
-from turbine_mamba import WindTurbineModel, get_dataloaders, test_model, train_one_epoch, validate_one_epoch
-from turbine_mamba.metrics import compute_r2  # Implemented compute_r2 in metrics.py
+from turbine_mamba import get_dataloaders, test_model, train_one_epoch, validate_one_epoch
+from turbine_mamba.metrics import compute_r2
 from turbine_mamba.plots import plot_loss_and_metrics, plot_predictions
 
+def test_model(model, test_loader, device):
+    model.eval()
+    predictions = []
+    ground_truth = []
+
+    with torch.no_grad():
+        for inputs, targets in test_loader:
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+
+            outputs = model(inputs)
+            predictions.append(outputs.cpu().numpy())
+            ground_truth.append(targets.cpu().numpy())
+
+    predictions = np.concatenate(predictions, axis=0)
+    ground_truth = np.concatenate(ground_truth, axis=0)
+
+    return predictions, ground_truth
+
+
+def train_one_epoch(model, train_loader, optimizer, criterion, device):
+    model.train()
+    total_loss = 0
+
+    for inputs, targets in train_loader:
+        inputs = inputs.to(device)
+        targets = targets.to(device)
+
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, targets)
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item()
+
+    return total_loss / len(train_loader)
+
+def validate_one_epoch(model, val_loader, criterion, device):
+    model.eval()
+    total_loss = 0
+    predictions = []
+    ground_truth = []
+
+    with torch.no_grad():
+        for inputs, targets in val_loader:
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            total_loss += loss.item()
+
+            predictions.append(outputs.cpu().numpy())
+            ground_truth.append(targets.cpu().numpy())
+
+    predictions = np.concatenate(predictions, axis=0)
+    ground_truth = np.concatenate(ground_truth, axis=0)
+
+    return total_loss / len(val_loader), predictions, ground_truth
+
 def denormalize(predictions, target_mean, target_std):
-    """
-    Denormalize predictions to original scale.
-
-    Args:
-        predictions (np.ndarray): Normalized predictions.
-        target_mean (pd.Series): Mean values of target features.
-        target_std (pd.Series): Standard deviation of target features.
-
-    Returns:
-        np.ndarray: Denormalized predictions.
-    """
     return predictions * target_std.values + target_mean.values
+
+class FFNNModel(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(FFNNModel, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, output_size)
+        )
+
+    def forward(self, x):
+        return self.model(x)
 
 def train_model(epochs, model, train_loader, val_loader, optimizer, criterion, device):
     train_losses = []
     val_losses = []
     metric_values = []
 
-    # Training and Validation
     for epoch in range(epochs):
         print(f"Epoch {epoch + 1}/{epochs}")
 
@@ -41,7 +106,7 @@ def train_model(epochs, model, train_loader, val_loader, optimizer, criterion, d
         val_loss, predictions, ground_truth = validate_one_epoch(model, val_loader, criterion, device)
         val_losses.append(val_loss)
 
-        # Compute a metric (e.g., R² score for validation predictions)
+        # Compute R^2 
         r2_score = compute_r2(predictions, ground_truth)
         metric_values.append(r2_score)
 
@@ -49,12 +114,11 @@ def train_model(epochs, model, train_loader, val_loader, optimizer, criterion, d
 
     return predictions, ground_truth, train_losses, val_losses, metric_values
 
-
 def main():
     project_dir = Path(__file__).parent
-    model_save_path = project_dir / "models" / "wind_turbine_model.pth"
+    model_save_path = project_dir / "models" / "ffnn_wind_turbine_model.pth"
     predictions_save_path = project_dir / "models" / "predictions_ground_truth.npz"
-    files_dir = project_dir / "data" / "raw"  # Replace with your directory path
+    files_dir = project_dir / "data" / "raw"
     files = [
         "wind_speed_11_n.csv", "wind_speed_13_n.csv",
         "wind_speed_15_n.csv", "wind_speed_17_n.csv", "wind_speed_19_n.csv"
@@ -62,34 +126,38 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Hyperparameters
-    model_name = "state-spaces/mamba-130m-hf"
-    batch_size = 32
-    epochs = 3
-    learning_rate = 1e-3
-    slice_size = 2000
-    step = 4
-    max_slices = 4  # numer_of_samples_per_file: (slice_size / step) * max_slices
-    model = WindTurbineModel(model_name).to(device)
-    criterion = MSELoss()
-    optimizer = Adam(model.fc.parameters(), lr=learning_rate)  # Train only FC layers
+    # Features and Targets
+    input_features = ['beta1', 'beta2', 'beta3', 'Theta', 'omega_r', 'Vwx']
+    target_features = ['Mz1', 'Mz2', 'Mz3']
 
-    train_loader, val_loader, test_loader, normalization_stats = get_dataloaders(files_dir, files, model_name, batch_size, slice_size, step,
-                                                                                 max_slices)
+    # Hyperparameters
+    input_size = len(input_features)
+    hidden_size = 64
+    output_size = len(target_features)
+    batch_size = 16
+    epochs = 20
+    learning_rate = 1e-4
+    slice_size = 3000
+    step = 4
+    max_slices = 4
+
+    model = FFNNModel(input_size, hidden_size, output_size).to(device)
+
+    criterion = nn.MSELoss()
+    optimizer = Adam(model.parameters(), lr=learning_rate)
+
+    train_loader, val_loader, test_loader, normalization_stats = get_dataloaders(files_dir, files, batch_size, slice_size, step, max_slices)
 
     predictions, ground_truth, train_losses, val_losses, metric_values = train_model(
         epochs, model, train_loader, val_loader, optimizer, criterion, device
     )
 
-
-    # Plot loss and metrics
     plot_loss_and_metrics(train_losses, val_losses, metric_values, metric_name="R² Score",
                           save_path="reports/figures/loss_and_metrics.png")
 
     # Testing
     predictions, ground_truth = test_model(model, test_loader, device)
 
-    # Denormalize predictions and ground truth
     target_mean, target_std = normalization_stats["target_mean"], normalization_stats["target_std"]
     predictions = denormalize(predictions, target_mean, target_std)
     ground_truth = denormalize(ground_truth, target_mean, target_std)
@@ -102,7 +170,6 @@ def main():
         os.makedirs(model_save_path.parent)
 
     try:
-        # Save the model
         torch.save(model.state_dict(), model_save_path)
         print(f"Model saved to {model_save_path}")
         if not predictions_save_path.parent.exists():
@@ -111,7 +178,6 @@ def main():
         print(f"Predictions and ground truth saved to {predictions_save_path}")
     except Exception as e:
         print(f"Error saving the model: {e}")
-
 
 if __name__ == "__main__":
     main()

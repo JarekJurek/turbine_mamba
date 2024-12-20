@@ -7,16 +7,16 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from transformers import AutoTokenizer
 
 
+
 class WindTurbineDataset(Dataset):
     """
     Custom Dataset for Wind Turbine Data
     """
 
-    def __init__(self, data, tokenizer_name, input_mean, input_std, target_mean=None, target_std=None):
+    def __init__(self, data, input_mean, input_std, target_mean=None, target_std=None):
         """
         Args:
             data (pd.DataFrame): Data containing input features and targets.
-            tokenizer_name (str): Name of the Hugging Face tokenizer to use.
             input_mean (pd.Series): Mean values of input features for normalization.
             input_std (pd.Series): Standard deviation of input features for normalization.
             target_mean (pd.Series): Mean values of targets for normalization (optional).
@@ -28,35 +28,16 @@ class WindTurbineDataset(Dataset):
         if target_mean is not None and target_std is not None:
             self.targets = (self.targets - target_mean) / target_std
 
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-
     def __len__(self):
         return len(self.inputs)
 
     def __getitem__(self, idx):
-        inputs = self.inputs.iloc[idx].values.astype(str)
-        target = self.targets.iloc[idx].values.astype(float)
+        inputs = torch.tensor(self.inputs.iloc[idx].values, dtype=torch.float32)
+        targets = torch.tensor(self.targets.iloc[idx].values, dtype=torch.float32)
+        return inputs, targets
 
-        input_text = " ".join(inputs)
-        return input_text, torch.tensor(target, dtype=torch.float32)
-
-
-def get_dataloaders(file_dir: Path, file_names, tokenizer_name, batch_size=32, slice_size=100, step=3, max_slices=None):
-    """
-    Creates train, validation, and test dataloaders.
-
-    Args:
-        file_dir (Path): Directory containing the CSV files.
-        file_names (list of str): List of file names to load.
-        tokenizer_name (str): Name of the Hugging Face tokenizer to use.
-        batch_size (int): Batch size for the dataloaders.
-        slice_size (int): Number of data points per slice.
-        step (int): Step size for downsampling within each slice (e.g., keep every 3rd or 4th point).
-        max_slices (int): Maximum number of slices to extract from each file.
-
-    Returns:
-        tuple: train_loader, val_loader, test_loader, normalization statistics
-    """
+    
+def get_dataloaders(file_dir, file_names, batch_size=32, slice_size=100, step=3, max_slices=None):
     file_paths = [os.path.join(file_dir, file) for file in file_names]
     data = []
 
@@ -72,8 +53,7 @@ def get_dataloaders(file_dir: Path, file_names, tokenizer_name, batch_size=32, s
 
     full_data = pd.concat(data, ignore_index=True).dropna()
 
-    # Split dataset before normalization
-    torch.manual_seed(42)
+    # Split dataset
     dataset_size = len(full_data)
     train_size = int(0.7 * dataset_size)
     val_size = int(0.2 * dataset_size)
@@ -84,7 +64,7 @@ def get_dataloaders(file_dir: Path, file_names, tokenizer_name, batch_size=32, s
     val_data = full_data.iloc[indices[train_size:train_size + val_size]]
     test_data = full_data.iloc[indices[train_size + val_size:]]
 
-    # Compute normalization stats from training data only
+    # Compute normalization stats
     input_features = ['beta1', 'beta2', 'beta3', 'Theta', 'omega_r', 'Vwx']
     target_features = ['Mz1', 'Mz2', 'Mz3']
 
@@ -93,12 +73,10 @@ def get_dataloaders(file_dir: Path, file_names, tokenizer_name, batch_size=32, s
     target_mean = train_data[target_features].mean()
     target_std = train_data[target_features].std()
 
-    # Create datasets with normalized inputs and targets
-    train_dataset = WindTurbineDataset(train_data, tokenizer_name, input_mean, input_std, target_mean, target_std)
-    val_dataset = WindTurbineDataset(val_data, tokenizer_name, input_mean, input_std, target_mean, target_std)
-    test_dataset = WindTurbineDataset(test_data, tokenizer_name, input_mean, input_std, target_mean, target_std)
+    train_dataset = WindTurbineDataset(train_data, input_mean, input_std, target_mean, target_std)
+    val_dataset = WindTurbineDataset(val_data, input_mean, input_std, target_mean, target_std)
+    test_dataset = WindTurbineDataset(test_data, input_mean, input_std, target_mean, target_std)
 
-    # Create dataloaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -112,11 +90,11 @@ def get_dataloaders(file_dir: Path, file_names, tokenizer_name, batch_size=32, s
 
 
 
+
 def test_dataloader():
-    # Example Usage
     project_dir = Path(__file__).parent.parent
 
-    files_dir = project_dir / "data" / "raw"  # Replace with your directory path
+    files_dir = project_dir / "data" / "raw"  
     files = [
         "wind_speed_11_n.csv", "wind_speed_13_n.csv",
         "wind_speed_15_n.csv", "wind_speed_17_n.csv", "wind_speed_19_n.csv"
@@ -126,7 +104,6 @@ def test_dataloader():
 
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(files_dir, files, batch_size, sample_fraction)
 
-    # Print the first batch
     for batch_idx, (inputs, targets) in enumerate(train_dataloader):
         print(f"Batch {batch_idx}")
         print(f"Inputs: {inputs.shape}")
